@@ -1,147 +1,162 @@
-# BGAM Quick（list_metadata.py）
+# All You Can SEAL
 
-一个用于**自动修改切片后 G-code 参数**的小工具。  
-它支持直接处理：
+> Modify Bambu Lab 3D printers into a TPU heat-sealing tool by patching G-code.
 
-- `.gcode` 文件
-- `.gcode.3mf` 文件（会在压缩包内定位并修改 `Metadata/plate_1.gcode`）
+`bgam_quick.py` (or `list_metadata.py`) is a small Python utility that rewrites the G-code inside Bambu Studio's `.gcode` and `.gcode.3mf` files to repurpose any Bambu printer (tested on **A1 mini** and **P1S**) as a heat-sealing machine. Instead of extruding filament to build a 3D object, the modified printer traces a 2D path with the nozzle hovering just above the bed — fusing two layers of TPU film into a custom-shaped inflatable pouch.
 
-适合场景：你已经切片完成，但想在不重新切片的情况下，快速统一一些关键打印参数（如喷嘴温度、Z 偏移、挤出倍率、移动速度）。
+This repository accompanies the MDes/MDF thesis ***Catlike: Emotion-Responsive Pneumatic Wearables*** (OCAD University, 2026). The heat-sealing method was developed iteratively across four fabrication stages — soldering iron → hair straightener → Cricut heat press → modified Bambu A1 mini — and this script is the final iteration.
 
 ---
 
-## 这个工具能做什么
+## What it does
 
-脚本会自动把目标文件中的参数调整为以下固定值：
+The script edits four parameters in the sliced G-code so the printer behaves as a heat sealer rather than a 3D printer:
 
-- 喷嘴温度：`260°C`
-- Z 偏移（Textured PEI）：`-0.15`
-- 挤出倍率：`120%`（通过 `M221 S120`）
-- 移动速度：`5 mm/s`（对应 `F300`）
+| Parameter | Stock value | Modified value | Purpose |
+|---|---|---|---|
+| Nozzle temperature | 230 °C | **260 °C** | Hot enough to fuse TPU film |
+| Z offset | varies | **−0.15 mm** | Press nozzle *into* the film stack |
+| Flow rate (M221) | 100 % | **120 %** | Injected after `;VT0` (no actual extrusion, retained as a marker) |
+| Travel speed | 500 mm/s | **5 mm/s** | Slow enough to transfer heat through TPU |
 
-并且会同时更新 G-code 中的多处相关字段（配置区、启动段、打印主体段）。
+It works by:
+1. Unpacking the `.gcode.3mf` archive (it is just a renamed `.zip`)
+2. Locating `Metadata/plate_1.gcode`
+3. Patching both the config header and the machine body
+4. Repacking the archive in place
+5. Saving `.before.gcode` and `.after.gcode` next to the original for inspection
 
 ---
 
-## 输入是什么
+## ⚠️ Safety warning — read before running
 
-命令行输入一个文件路径：
+Modifying G-code bypasses the slicer's safety checks. **Run at your own risk.** In particular:
 
-- 支持：`.gcode` / `.gcode.3mf`
-- 不传参数时，默认输入：`test.gcode.3mf`
+- **Negative Z offset (−0.15 mm) presses the nozzle below the bed's zero point.** If your bed is not protected by a silicone mat or thick cardboard, you can scratch the build plate, damage the nozzle, or jam the toolhead.
+- **260 °C is above the rated temperature for many TPU filaments.** Ensure adequate ventilation — TPU at this temperature releases fumes you should not breathe.
+- **Travel speed at 5 mm/s with the heater on means the nozzle dwells over each point.** Do not leave the printer unattended. If the toolhead stalls, the bed material will scorch within seconds.
+- **Always do a dry run first** with the heater off, watching the toolhead path, before committing TPU film.
+- This workflow is **not endorsed by Bambu Lab** and may void your warranty.
 
-示例：
+This tool is intended for researchers, makers, and educators experimenting with soft fabrication. It is not a product.
+
+---
+
+## Hardware you'll need
+
+| Item | Notes |
+|---|---|
+| **Bambu Lab 3D printer** | Tested on [A1 mini](https://bambulab.com/en/a1-mini) and [P1S](https://bambulab.com/en/p1). Other Bambu models with the same G-code structure should work but are untested. |
+| **TPU filament** | Used to print the initial 0.28 mm "stamp" line that defines the seal path. [Bambu Generic TPU](https://bambulab.com/en/filament-guide/tpu) works well. |
+| **TPU film** | The actual material being sealed. ~0.1–0.2 mm thickness, two layers. |
+| **Silicone mat or thick cardboard** | Sits between the bed and the TPU stack to protect the build plate. |
+| **Parchment paper** | Prevents the TPU from sticking to the silicone mat / nozzle. |
+| **Tape** | Any clear packing tape works. Used to fix the TPU stack in place so it does not shift mid-print. |
+
+---
+
+## Software requirements
+
+- Python 3.10+
+- [Bambu Studio](https://bambulab.com/en/download/studio) (to slice the initial `.gcode.3mf`)
+- [Fusion 360](https://www.autodesk.com/products/fusion-360) or any tool that exports STL (to build the 2D shape)
+- [Adobe Illustrator](https://www.adobe.com/products/illustrator.html) or [The Noun Project](https://thenounproject.com/icons/) (to source SVGs)
+
+No external Python dependencies — only the standard library.
+
+---
+
+## Quick start
 
 ```bash
-python list_metadata.py test.gcode.3mf
-python list_metadata.py your_file.gcode
+# Clone the repo
+git clone https://github.com/<your-username>/all-you-can-seal.git
+cd all-you-can-seal
+
+# Patch a sliced .gcode.3mf in place
+python3 list_metadata.py path/to/your_sliced_file.gcode.3mf
+```
+
+The script edits the file in place and writes two side-by-side files for diffing:
+
+```
+your_sliced_file.before.gcode   # original
+your_sliced_file.after.gcode    # patched
+your_sliced_file.gcode.3mf      # patched, ready to send to printer
+```
+
+You can also patch a raw `.gcode` file directly:
+
+```bash
+python3 list_metadata.py path/to/your_file.gcode
 ```
 
 ---
 
-## 输出是什么
+## Full workflow
 
-### 1) 原文件会被直接改写（in-place）
+The script handles step 4. The full pipeline:
 
-- 输入文件会被替换成修改后的内容。
-
-### 2) 会额外生成前后对比文件
-
-在当前工作目录下输出：
-
-- `<basename>.before.gcode`
-- `<basename>.after.gcode`
-
-例如输入 `test.gcode.3mf`，会生成：
-
-- `test.before.gcode`
-- `test.after.gcode`
-
-### 3) 终端会打印报告
-
-包括：
-
-- 输入/输出文件名
-- before/after gcode 路径
-- 各参数替换次数
-- 警告信息（如缺少某些标记段）
+1. **Draw or find a shape.** SVG, simple closed path. Avoid sharp corners — the nozzle slows at corners and may scorch the film.
+2. **Convert to STL.** Import the SVG into Fusion 360. Set stroke thickness to 2–3 mm and extrude height to **0.28 mm**. Export as STL.
+3. **Slice in Bambu Studio.** Drag in the STL, set layer height to **0.28 mm Extra Draft**, choose a Generic TPU profile, and export the single-plate `.gcode.3mf`.
+4. **Patch the G-code.** Run `python3 list_metadata.py your_file.gcode.3mf`.
+5. **Print.** Place the cardboard / silicone mat on the bed, parchment paper on top, then your TPU film stack, then more parchment, then tape it all down. Send the patched file to the printer. Watch it.
 
 ---
 
-## 处理逻辑（简要）
+## Configuration
 
-脚本会按 G-code 常见分段标记执行修改：
+The four key parameters are constants at the top of the script:
 
-- `; CONFIG_BLOCK_END`
-- `; MACHINE_START_GCODE_END`
-- `; MACHINE_END_GCODE_START`
-
-主要行为：
-
-1. 在 config header 中更新：
-	- `nozzle_temperature`
-	- `nozzle_temperature_initial_layer`
-	- `filament_flow_ratio`
-
-2. 在 startup 段中：
-	- 仅把 `M104/M109` 中 `230` 改为 `260`（并跳过一些排除温度）
-	- 把 `G29.1 Z... ; for Textured PEI Plate` 改为 `Z-0.15`
-
-3. 在打印主体中：
-	- 在 `;VT0` 后注入或更新 `M221 S120`
-	- 将移动速度相关进给改为 `F300`（即 5mm/s）
-
----
-
-## 快速开始
-
-### 环境要求
-
-- Python 3.9+
-
-### 运行
-
-```bash
-python list_metadata.py <你的文件路径>
+```python
+NOZZLE_TEMP = 260       # °C
+Z_OFFSET = -0.15        # mm (negative = press into bed)
+FLOW_RATE = 120         # percent
+TRAVEL_SPEED = 5        # mm/s
 ```
 
-如果你在项目虚拟环境中运行，也可以：
-
-```bash
-.venv/bin/python list_metadata.py <你的文件路径>
-```
+Tune these for your specific TPU film thickness and brand. Thicker films may want `−0.20 mm` Z offset; thinner films may scorch and need `+0.0` and lower temperature.
 
 ---
 
-## 示例
+## FAQ / Troubleshooting
 
-```bash
-.venv/bin/python list_metadata.py test.gcode.3mf
-```
+**The script says "未找到 CONFIG_BLOCK_END" / "MACHINE_START_GCODE_END".**
+The G-code structure differs from what the script expects. This usually means it was sliced with a non-Bambu slicer (e.g. PrusaSlicer, OrcaSlicer with a non-Bambu profile). Re-slice with Bambu Studio targeting a Bambu printer.
 
-运行后你会得到：
+**The script says "未找到内部文件 Metadata/plate_1.gcode".**
+Your `.gcode.3mf` was exported as multi-plate. In Bambu Studio, use **Export single-plate slice file** instead of the regular export.
 
-- 已改写的 `test.gcode.3mf`
-- `test.before.gcode`
-- `test.after.gcode`
+**The seal won't hold — film peels apart after cooling.**
+Either the temperature is too low (try +5 °C), the Z offset is too high (try `−0.20 mm`), or the travel speed is too fast (try 3 mm/s). Change one variable at a time.
 
-并在终端看到修改统计。
+**The film burns through / leaves brown marks.**
+Opposite problem. Reduce temperature first (try 250 °C), then raise Z offset toward zero. Make sure parchment paper is between the nozzle and the TPU.
+
+**The nozzle scrapes the bed.**
+Your Z offset is too aggressive for your stack thickness, or your cardboard / silicone mat is too thin. Add a layer or set `Z_OFFSET = -0.05`.
+
+**Can I use this on a non-Bambu printer?**
+Not directly. The script targets Bambu's specific G-code dialect (the `;VT0`, `M104`/`M109` placement, and the `Metadata/plate_1.gcode` path inside the 3MF). Adapting it for Prusa or Klipper is feasible but unimplemented.
+
+**Will this void my warranty?**
+Probably. Bambu does not document or support G-code modifications of this kind.
 
 ---
 
-## 注意事项
+## Project context
 
-- 工具会**直接覆盖输入文件**，请保留备份（脚本会生成 before 文件，但建议仍保留原始切片文件）。
-- 若 `.gcode.3mf` 内部不存在 `Metadata/plate_1.gcode`，脚本会报错并退出。
-- 若文件中缺少分段标记，相关修改会跳过并给出警告。
-- 当前参数是写死在 `list_metadata.py` 顶部常量中的（`NOZZLE_TEMP`、`Z_OFFSET`、`FLOW_RATE`、`TRAVEL_SPEED`）。如需改目标值，可直接修改这些常量。
+This script was developed as part of ***Catlike***, a Research-through-Design (RtD) thesis exploring emotion-responsive pneumatic wearables at OCAD University. The wearables — an HRV-responsive headpiece and a plantar-pressure-responsive shoe — both rely on TPU air bladders sealed in custom shapes, which is what this tool produces.
+
+Earlier iterations of the sealing method used a soldering iron, then a hair straightener, then a Cricut heat press. Each had constraints (precision, repeatability, shape complexity) that motivated the next step. The Bambu method described here was the original vision; institutional access to the printer arrived late in the project, which is why earlier iterations exist at all.
+
+If you are using this for similar soft-robotics or wearable research, I'd love to hear about it.
 
 ---
 
-## 文件说明
+## License
 
-- `list_metadata.py`：主脚本
-- `test.gcode.3mf` / `test1.gcode.3mf`：示例输入
-- `test.before.gcode` / `test.after.gcode`：示例输出
-- `TPU_Inflatable.pdf`：项目相关资料（当前 README 主要基于脚本实际行为编写）
-1
+This project is licensed under [Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/).
+
+You are free to share and adapt the material for non-commercial purposes, with attribution. Commercial use requires explicit permission.
