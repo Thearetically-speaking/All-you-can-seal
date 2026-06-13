@@ -16,7 +16,7 @@ The script edits four parameters in the sliced G-code so the printer behaves as 
 |---|---|---|---|
 | Nozzle temperature | 230 °C | **260 °C** | Hot enough to fuse TPU film |
 | Z offset | varies | **−0.15 mm** | Press nozzle *into* the film stack |
-| Flow rate (M221) | 100 % | **120 %** | Injected after `;VT0` (no actual extrusion, retained as a marker) |
+| Flow rate (M221) | 100 % | **120 %** | give more consisten heat and pressure to the film |
 | Travel speed | 500 mm/s | **5 mm/s** | Slow enough to transfer heat through TPU |
 
 It works by:
