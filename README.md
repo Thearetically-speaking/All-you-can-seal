@@ -12,11 +12,11 @@ This repository accompanies the MDes/MDF thesis ***Catlike: Emotion-Responsive P
 
 The script edits four parameters in the sliced G-code so the printer behaves as a heat sealer rather than a 3D printer:
 
-| Parameter | Stock value | Modified value | Purpose |
+| Parameter | Pre-set value | Modified value | Purpose |
 |---|---|---|---|
 | Nozzle temperature | 230 °C | **260 °C** | Hot enough to fuse TPU film |
 | Z offset | varies | **−0.15 mm** | Press nozzle *into* the film stack |
-| Flow rate (M221) | 100 % | **120 %** | give more consisten heat and pressure to the film |
+| Flow rate (M221) | 100 % | **120 %** | Give more consisten heat and pressure to the film |
 | Travel speed | 500 mm/s | **5 mm/s** | Slow enough to transfer heat through TPU |
 
 It works by:
