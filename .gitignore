@@ -3,3 +3,5 @@
 /test.after.gcode
 /test.before.gcode
 /test.gcode.3mf
+web/node_modules
+web/dist
