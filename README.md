@@ -2,7 +2,41 @@
 
 > Modify Bambu Lab 3D printers into a TPU heat-sealing tool by patching G-code.
 
-`bgam_quick.py` (or `list_metadata.py`) is a small Python utility that rewrites the G-code inside Bambu Studio's `.gcode` and `.gcode.3mf` files to repurpose any Bambu printer (tested on **A1 mini** and **P1S**) as a heat-sealing machine. Instead of extruding filament to build a 3D object, the modified printer traces a 2D path with the nozzle hovering just above the bed — fusing two layers of TPU film into a custom-shaped inflatable pouch.
+This project rewrites the G-code inside Bambu Studio's `.gcode` and `.gcode.3mf` files to repurpose any Bambu printer (tested on **A1 mini** and **P1S**) as a heat-sealing machine. Instead of extruding filament to build a 3D object, the modified printer traces a 2D path with the nozzle hovering just above the bed — fusing two layers of TPU film into a custom-shaped inflatable pouch.
+
+It comes in two forms:
+
+- **🌐 Web app (recommended)** — zero install, drag & drop, 3D path preview, safety checks. Lives in [`web/`](web/) and deploys to GitHub Pages. Your file never leaves the browser.
+- **🐍 Python CLI** — the original `allyoucanseal-bambu.py` script, kept as a command-line alternative.
+
+## Web app
+
+Open the GitHub Pages site (or run it locally), drop in a `.gcode.3mf` sliced by Bambu Studio, and the app will:
+
+1. Parse the file **entirely in your browser** (no upload — the 3mf never leaves your machine);
+2. Detect the machine, plates, and the sliced nozzle temperature (no hardcoded 230 °C — see FR-8 in [PRD.md](PRD.md));
+3. Let you tune the four seal parameters with sliders (defaults match the CLI constants);
+4. Show a slicer-style **3D preview** of the rewritten path — scrub the step slider to replay the nozzle's route, color by seal/travel or by speed, filter by layer;
+5. Run **safety checks** before export (structure markers, executable-vs-config temperature counts, M221 injection, residual fast moves, machine temperature limits, double-processing detection);
+6. Export `<name>-sealed.gcode.3mf` with the plate's `.gcode.md5` correctly recomputed and every other zip entry preserved byte-for-byte. Multi-plate files are supported (the first plate is selected by default).
+
+Run locally:
+
+```bash
+cd web
+npm install
+npm run dev     # dev server
+npm test        # engine unit tests (uses test1.gcode.3mf as a regression fixture)
+npm run build   # production build to web/dist
+```
+
+Machine limits (bed size, hot-end max, protected process temperatures) live in [`web/src/data/machines.json`](web/src/data/machines.json) — PRs adding new Bambu models are welcome.
+
+> Note: the legacy `test1.gcode.3mf` in this repo was processed by an older script version and contains corrupted concatenated lines — the web app detects and warns about exactly this. It is intentionally kept as the negative test fixture.
+
+## Python CLI
+
+`allyoucanseal-bambu.py` is the original small Python utility (single plate, hardcoded 230 °C source temperature — the web app fixes both limitations).
 
 This repository accompanies the MDes/MDF thesis ***Catlike: Emotion-Responsive Pneumatic Wearables*** (OCAD University, 2026). The heat-sealing method was developed iteratively across four fabrication stages — soldering iron → hair straightener → Cricut heat press → modified Bambu A1 mini — and this script is the final iteration.
 
@@ -74,7 +108,7 @@ git clone https://github.com/<your-username>/all-you-can-seal.git
 cd all-you-can-seal
 
 # Patch a sliced .gcode.3mf in place
-python3 list_metadata.py path/to/your_sliced_file.gcode.3mf
+python3 allyoucanseal-bambu.py path/to/your_sliced_file.gcode.3mf
 ```
 
 The script edits the file in place and writes two side-by-side files for diffing:
@@ -88,7 +122,7 @@ your_sliced_file.gcode.3mf      # patched, ready to send to printer
 You can also patch a raw `.gcode` file directly:
 
 ```bash
-python3 list_metadata.py path/to/your_file.gcode
+python3 allyoucanseal-bambu.py path/to/your_file.gcode
 ```
 
 ---
@@ -100,7 +134,7 @@ The script handles step 4. The full pipeline:
 1. **Draw or find a shape.** SVG, simple closed path. Avoid sharp corners — the nozzle slows at corners and may scorch the film.
 2. **Convert to STL.** Import the SVG into Fusion 360. Set stroke thickness to 2–3 mm and extrude height to **0.28 mm**. Export as STL.
 3. **Slice in Bambu Studio.** Drag in the STL, set layer height to **0.28 mm Extra Draft**, choose a Generic TPU profile, and export the single-plate `.gcode.3mf`.
-4. **Patch the G-code.** Run `python3 list_metadata.py your_file.gcode.3mf`.
+4. **Patch the G-code.** Run `python3 allyoucanseal-bambu.py your_file.gcode.3mf`.
 5. **Print.** Place the cardboard / silicone mat on the bed, parchment paper on top, then your TPU film stack, then more parchment, then tape it all down. Send the patched file to the printer. Watch it.
 
 ---
