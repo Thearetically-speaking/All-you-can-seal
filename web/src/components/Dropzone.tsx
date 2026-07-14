@@ -42,9 +42,15 @@ export function Dropzone({ onFile, onBadFile, compact }: Props) {
       role="button"
       tabIndex={0}
     >
-      <div className="big">{t('drop.title')}</div>
-      <div className="dim">{t('drop.or')}</div>
-      {!compact && <div className="dim" style={{ marginTop: 10 }}>{t('drop.hint')}</div>}
+      {compact ? (
+        <div className="dim">📄 {t('file.another')}</div>
+      ) : (
+        <>
+          <div className="big">{t('drop.title')}</div>
+          <div className="dim">{t('drop.or')}</div>
+          <div className="dim" style={{ marginTop: 10 }}>{t('drop.hint')}</div>
+        </>
+      )}
       <input
         ref={inputRef}
         type="file"

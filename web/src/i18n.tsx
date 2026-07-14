@@ -19,8 +19,8 @@ const STRINGS = {
   // Validator
   'validate.title': { en: 'Parameter validator (read-only)', zh: '参数校验（只读）' },
   'validate.hint': {
-    en: 'Nothing is modified: this reads the G-code inside an uploaded .gcode.3mf (or .gcode) and shows the four seal parameters actually present in it, so you can verify a file by eye before printing.',
-    zh: '不修改任何内容：读取上传的 .gcode.3mf（或 .gcode）中的 G-code，显示文件里实际存在的四个热封参数，供人工核对后再打印。',
+    en: 'Reads a .gcode.3mf (or .gcode) and shows the seal parameters actually present in it. Nothing is modified.',
+    zh: '读取 .gcode.3mf（或 .gcode），显示文件中实际存在的热封参数。不修改任何内容。',
   },
   'validate.param': { en: 'Parameter', zh: '参数' },
   'validate.detected': { en: 'Found in G-code', zh: 'G-code 中检出值' },
@@ -41,6 +41,23 @@ const STRINGS = {
     en: 'No processing marker — this file has not been processed by this tool. Values below are what the slicer produced.',
     zh: '未发现处理标记——该文件未经本工具处理，下表为切片器原始值。',
   },
+  // Raw G-code viewer
+  'viewer.title': { en: 'Raw G-code', zh: '原始 G-code' },
+  'viewer.tip': {
+    en: 'In G-code a parameter keeps its last value until a later line changes it. Green covers every line where the selected parameter is in effect at the target value; the left column shows the value in effect per line. Lines that explicitly set the parameter carry an edge bar — red when they set a value other than the target.',
+    zh: 'G-code 参数会保持上一次设置的值，直到被后续行修改。绿色覆盖所选参数以目标值生效的所有行；左侧数值列显示每行生效值。显式设置参数的行带有边条标记——设置为非目标值时显示为红色。',
+  },
+  'viewer.target': { en: 'Target', zh: '目标值' },
+  'viewer.atTarget': {
+    en: 'Share of lines running at the target value',
+    zh: '以目标值运行的行占比',
+  },
+  'viewer.p.temp': { en: 'Temp', zh: '温度' },
+  'viewer.p.flow': { en: 'Flow', zh: '流量' },
+  'viewer.p.speed': { en: 'Speed', zh: '速度' },
+  'viewer.p.z': { en: 'Z offset', zh: 'Z 偏移' },
+  'viewer.prev': { en: 'Previous set line', zh: '上一处设置' },
+  'viewer.next': { en: 'Next set line', zh: '下一处设置' },
   // Dropzone
   'drop.title': { en: 'Drop your .gcode.3mf here', zh: '把 .gcode.3mf 拖到这里' },
   'drop.or': { en: 'or click to choose a file', zh: '或点击选择文件' },
@@ -78,8 +95,8 @@ const STRINGS = {
   // Plates
   'plates.title': { en: 'Plates', zh: '盘（Plate）' },
   'plates.hint': {
-    en: 'Choose the plates to convert. Unselected plates are kept untouched in the exported file.',
-    zh: '选择要改写的盘；未选中的盘在导出文件中原样保留。',
+    en: 'Unselected plates are exported untouched.',
+    zh: '未选中的盘在导出时原样保留。',
   },
   'plates.all': { en: 'Select all', zh: '全部改写' },
   'plates.plate': { en: 'Plate', zh: '盘' },
@@ -87,6 +104,7 @@ const STRINGS = {
   'params.title': { en: 'Seal parameters', zh: '热封参数' },
   'params.reset': { en: 'Restore defaults', zh: '恢复默认' },
   'params.remember': { en: 'Remember my parameters', zh: '记住我的参数' },
+  'params.custom': { en: 'Custom', zh: '自定义' },
   'params.nozzleTemp': { en: 'Nozzle temperature', zh: '喷嘴温度' },
   'params.nozzleTemp.hint': {
     en: 'Heat-seal temperature. Seal won’t hold → +5°C. Film burns → −10°C first.',
@@ -132,65 +150,62 @@ const STRINGS = {
   'preview.empty': { en: 'Drop a file to see its path', zh: '导入文件后显示路径' },
   'preview.slow': { en: 'slow', zh: '慢' },
   'preview.fast': { en: 'fast', zh: '快' },
-  // Checks
-  'checks.title': { en: 'Safety checks', zh: '安全检查' },
-  'checks.pass': { en: 'OK', zh: '通过' },
+  // Checks (titles are shown only when the check does NOT pass)
   'checks.hardFail': {
     en: 'Blocking issues found. Fix them or explicitly accept the risk below.',
     zh: '存在阻止导出的问题。请修复，或在下方明确确认风险。',
   },
   'checks.force': { en: 'I understand the risks, export anyway', zh: '我了解风险，仍要导出' },
-  'checks.markers.title': { en: 'Structure markers present', zh: '结构标记齐全' },
+  'checks.markers.title': { en: 'Structure markers missing', zh: '结构标记缺失' },
   'checks.markers.desc': {
     en: 'CONFIG_BLOCK_END / MACHINE_START_GCODE_END / MACHINE_END_GCODE_START locate the sections we rewrite. If any is missing the file is not touched at all — a half-rewritten file could crash the nozzle into the bed. Missing: {missing}. Re-slice with Bambu Studio using a Bambu printer profile.',
     zh: 'CONFIG_BLOCK_END / MACHINE_START_GCODE_END / MACHINE_END_GCODE_START 用于定位改写区间。缺任一项则完全不改写——半成品文件可能让喷嘴撞床。缺失：{missing}。请用 Bambu Studio 选择 Bambu 打印机档位重新切片。',
   },
-  'checks.temp-exec.title': { en: 'Executable temperature lines rewritten', zh: '可执行温度行已改写' },
+  'checks.temp-exec.title': { en: 'Temperature lines not rewritten', zh: '温度行未改写' },
   'checks.temp-exec.desc': {
     en: 'Rewrote {exec} executable M104/M109 line(s) (plus {config} config-header line(s), counted separately) matching source temp {sources}°C. Zero executable changes means the printer would seal at the wrong temperature — usually the file was already processed, or the sliced temperature was not detected.',
     zh: '按源温度 {sources}°C 改写了 {exec} 行可执行 M104/M109（另有 {config} 行配置头，分开计数）。可执行行为 0 意味着打印机会用错误温度热封——通常是文件已被处理过，或未能识别切片温度。',
   },
-  'checks.m221.title': { en: 'Flow rate M221 injected', zh: '流量 M221 已注入' },
+  'checks.m221.title': { en: 'Flow rate M221 not injected', zh: '流量 M221 未注入' },
   'checks.m221.desc': {
     en: 'M221 S{flow} must be injected after the ;VT0 marker at the start of the print body. Without it the seal pressure profile is wrong. If ;VT0 is missing, re-slice with Bambu Studio.',
     zh: 'M221 S{flow} 需注入打印主体开头的 ;VT0 标记之后。未注入则热封压力不正确。若找不到 ;VT0，请用 Bambu Studio 重新切片。',
   },
-  'checks.residual-speed.title': { en: 'No residual fast move lines', zh: '无残留高速移动行' },
+  'checks.residual-speed.title': { en: 'Residual fast move lines found', zh: '残留高速移动行' },
   'checks.residual-speed.desc': {
     en: 'Reverse assertion: after rewriting, the body must contain no standalone G1 F line faster than the target speed. Found {count} (e.g. “{example}”). A residual fast line would drag the hot nozzle across the film at print speed.',
     zh: '反向断言：改写后主体不应残留快于目标速度的独立 G1 F 行。发现 {count} 处（如 “{example}”）。残留高速行会让热喷嘴以打印速度划过薄膜。',
   },
-  'checks.max-temp.title': { en: 'Temperature within machine limit', zh: '温度未超机型上限' },
+  'checks.max-temp.title': { en: 'Temperature exceeds machine limit', zh: '温度超出机型上限' },
   'checks.max-temp.desc': {
     en: 'Target {target}°C vs {machine} hotend limit {max}°C. Exceeding the hotend rating can damage the printer and is blocked.',
     zh: '目标 {target}°C，{machine} 热端上限 {max}°C。超过热端额定温度可能损坏打印机，禁止导出。',
   },
-  'checks.already-processed.title': { en: 'Not previously processed', zh: '未被重复处理' },
+  'checks.already-processed.title': { en: 'File was already processed', zh: '文件已被处理过' },
   'checks.already-processed.desc': {
     en: 'This file carries a processing marker ({marker}). Running the conversion twice stacks changes (e.g. speeds already slowed). Prefer starting from the original sliced file.',
     zh: '该文件带有处理标记（{marker}）。二次处理会叠加修改（例如速度已被降过）。建议从原始切片文件重新开始。',
   },
-  'checks.corrupt-lines.title': { en: 'No corrupted concatenated lines', zh: '无损坏拼接行' },
+  'checks.corrupt-lines.title': { en: 'Corrupted concatenated lines found', zh: '存在损坏拼接行' },
   'checks.corrupt-lines.desc': {
     en: 'Found {count} corrupted line(s) like “{example}” (line {lineNo}) — a fingerprint of the old Python script joining lines without newlines. The printer may ignore or misread these commands. Re-slice a clean file if possible.',
     zh: '发现 {count} 处损坏行，如第 {lineNo} 行 “{example}”——这是旧脚本丢失换行的特征。打印机可能忽略或误读这些命令。建议重新切片。',
   },
-  'checks.machine-verified.title': { en: 'Machine verified for sealing', zh: '机型已验证' },
+  'checks.machine-verified.title': { en: 'Machine not verified for sealing', zh: '机型未经验证' },
   'checks.machine-verified.desc': {
     en: '“{machine}” is not in the verified list (A1 mini, P1S). The G-code structure is likely compatible, but proceed with a dry run first.',
     zh: '“{machine}” 不在已验证列表（A1 mini、P1S）中。G-code 结构大概率兼容，但请先空跑测试。',
   },
-  'checks.textured-pei.title': { en: 'Z offset applied (Textured PEI)', zh: 'Z 偏移已生效（Textured PEI）' },
+  'checks.textured-pei.title': { en: 'Z offset will not take effect', zh: 'Z 偏移不会生效' },
   'checks.textured-pei.desc': {
     en: 'No “G29.1 Z… ; for Textured PEI Plate” line found (bed type: {bedType}). The Z offset {z} mm will NOT take effect, so the nozzle may not press into the film. Either re-slice with the Textured PEI plate selected, or compensate with a thicker silicone mat.',
     zh: '未找到 “G29.1 Z… ; for Textured PEI Plate” 行（床型：{bedType}）。Z 偏移 {z} mm 将不会生效，喷嘴可能压不进薄膜。请改用 Textured PEI 床型重新切片，或用更厚的硅胶垫补偿。',
   },
-  'checks.z-deep.title': { en: 'Z offset within safe range', zh: 'Z 偏移在安全范围' },
+  'checks.z-deep.title': { en: 'Z offset presses hard into the plate', zh: 'Z 偏移压床过深' },
   'checks.z-deep.desc': {
     en: 'Z offset {z} mm is below {threshold} mm. This presses hard into the plate — make sure a silicone mat / cardboard protects the bed.',
     zh: 'Z 偏移 {z} mm 低于 {threshold} mm，会强力压向打印床——务必垫硅胶垫或厚纸板。',
   },
-  'checks.why': { en: 'Why this matters', zh: '这是什么、为什么重要' },
   // Export
   'export.title': { en: 'Export', zh: '导出' },
   'export.button': { en: 'Export sealed file', zh: '导出热封文件' },
@@ -205,8 +220,8 @@ const STRINGS = {
   'export.flowVal': { en: '{old} → {new} (M221 S{flow}, {config} config line)', zh: '{old} → {new}（M221 S{flow}，配置 {config} 处）' },
   'export.speed': { en: 'Move speed', zh: '移动速度' },
   'export.speedVal': { en: '→ {new} mm/s ({n} lines)', zh: '→ {new} mm/s（{n} 处）' },
-  'export.before': { en: 'Download before.gcode', zh: '下载 before.gcode' },
-  'export.after': { en: 'Download after.gcode', zh: '下载 after.gcode' },
+  'export.before': { en: 'Download original G-code', zh: '下载原始 G-code' },
+  'export.after': { en: 'Download sealed G-code', zh: '下载热封 G-code' },
   'export.done': { en: 'Exported {name}', zh: '已导出 {name}' },
   'export.safety.title': { en: 'Before you print — safety', zh: '打印前——安全须知' },
   'export.safety.mat': {
@@ -230,9 +245,11 @@ const STRINGS = {
   'misc.processing': { en: 'Rewriting…', zh: '正在改写…' },
   'misc.lang': { en: '中文', zh: 'EN' },
   'misc.previewPlate': { en: 'Previewing plate {n}', zh: '预览盘 {n}' },
+  'misc.github': { en: 'View source on GitHub', zh: '在 GitHub 查看源码' },
+  'misc.dismiss': { en: 'Dismiss', zh: '关闭' },
   'misc.footer': {
-    en: 'Runs fully offline after load · MIT licensed · Not endorsed by Bambu Lab',
-    zh: '加载后完全离线运行 · MIT 许可 · 与 Bambu Lab 无关',
+    en: 'MIT licensed · Not endorsed by Bambu Lab',
+    zh: 'MIT 许可 · 与 Bambu Lab 无关',
   },
 } as const;
 

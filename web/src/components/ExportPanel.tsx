@@ -10,13 +10,20 @@ interface Props {
   exportEnabled: boolean;
   exporting: boolean;
   exportedName: string | null;
+  /** Hard checks failed but a forced export is still meaningful. */
+  needsForce: boolean;
+  force: boolean;
+  onForceChange: (v: boolean) => void;
   onExport: () => void;
   onDownloadText: (which: 'before' | 'after') => void;
 }
 
 export function ExportPanel(props: Props) {
   const { t } = useI18n();
-  const { plates, params, multiPlate, exportEnabled, exporting, exportedName, onExport, onDownloadText } = props;
+  const {
+    plates, params, multiPlate, exportEnabled, exporting, exportedName,
+    needsForce, force, onForceChange, onExport, onDownloadText,
+  } = props;
 
   return (
     <div className="panel">
@@ -31,6 +38,13 @@ export function ExportPanel(props: Props) {
           </tbody>
         </table>
       </div>
+
+      {needsForce && (
+        <label className="force-row">
+          <input type="checkbox" checked={force} onChange={(e) => onForceChange(e.target.checked)} />
+          {t('checks.force')}
+        </label>
+      )}
 
       <div style={{ height: 10 }} />
       <button className="btn" disabled={!exportEnabled || exporting} onClick={onExport}>
@@ -48,13 +62,15 @@ export function ExportPanel(props: Props) {
       {exportedName && (
         <>
           <div className="export-done">✅ {t('export.done', { name: exportedName })}</div>
-          <h2 style={{ marginTop: 14 }}>{t('export.safety.title')}</h2>
-          <ul className="safety-list">
-            <li>{t('export.safety.mat')}</li>
-            <li>{t('export.safety.vent')}</li>
-            <li>{t('export.safety.watch')}</li>
-            <li>{t('export.safety.dry')}</li>
-          </ul>
+          <details className="safety-details" open>
+            <summary>{t('export.safety.title')}</summary>
+            <ul className="safety-list">
+              <li>{t('export.safety.mat')}</li>
+              <li>{t('export.safety.vent')}</li>
+              <li>{t('export.safety.watch')}</li>
+              <li>{t('export.safety.dry')}</li>
+            </ul>
+          </details>
         </>
       )}
     </div>

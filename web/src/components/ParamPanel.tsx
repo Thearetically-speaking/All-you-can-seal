@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { useI18n, StringKey } from '../i18n';
-import { DEFAULT_PARAMS, PARAM_LIMITS, SealParams, Z_WARN_BELOW } from '../engine/types';
+import { DEFAULT_PARAMS, PARAM_LIMITS, SealParams } from '../engine/types';
+import { Tip } from './Tip';
 
 interface Props {
   params: SealParams;
@@ -10,6 +12,14 @@ interface Props {
   machineMaxTemp: number;
 }
 
+/** Quick-pick values per parameter; the middle one is the default. */
+const PRESETS: Record<keyof SealParams, number[]> = {
+  nozzleTemp: [240, 260, 280],
+  zOffset: [-0.1, -0.15, -0.2],
+  flowRate: [100, 120, 150],
+  travelSpeed: [3, 5, 10],
+};
+
 interface RowProps {
   id: keyof SealParams;
   unit: string;
@@ -17,46 +27,89 @@ interface RowProps {
   max: number;
   step: number;
   value: number;
-  warn?: string | null;
   onChange: (v: number) => void;
 }
 
-function ParamRow({ id, unit, min, max, step, value, warn, onChange }: RowProps) {
+function fmt(id: keyof SealParams, v: number): string {
+  return id === 'zOffset' ? v.toFixed(2) : String(v);
+}
+
+function ParamRow({ id, unit, min, max, step, value, onChange }: RowProps) {
   const { t } = useI18n();
+  const presets = PRESETS[id].filter((v) => v >= min && v <= max);
+  const isPreset = presets.includes(value);
+  const [custom, setCustom] = useState(!isPreset);
+  // Local text state so partial input ("-0.", "2") is not clamped mid-keystroke.
+  const [text, setText] = useState(fmt(id, value));
+  useEffect(() => setText(fmt(id, value)), [id, value]);
+
   const clamp = (v: number) => Math.min(max, Math.max(min, v));
+  const commit = () => {
+    const v = parseFloat(text);
+    if (Number.isNaN(v)) {
+      setText(fmt(id, value)); // invalid → revert
+      return;
+    }
+    const c = clamp(v);
+    setText(fmt(id, c));
+    onChange(c);
+  };
+
   return (
-    <div className={`param ${warn ? 'warned' : ''}`}>
+    <div className="param">
       <div className="row1">
-        <label htmlFor={`p-${id}`}>{t(`params.${id}` as StringKey)}</label>
-        <span className="hint" style={{ margin: 0 }}>
-          {min} – {max} {unit}
+        <label>
+          {t(`params.${id}` as StringKey)}
+          <Tip text={t(`params.${id}.hint` as StringKey)} />
+        </label>
+        <span className="cur">
+          {fmt(id, value)} {unit}
         </span>
       </div>
-      <div className="row2">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(clamp(parseFloat(e.target.value)))}
-        />
-        <input
-          id={`p-${id}`}
-          type="number"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => {
-            const v = parseFloat(e.target.value);
-            if (!Number.isNaN(v)) onChange(clamp(v));
-          }}
-        />
-        <span className="unit">{unit}</span>
+      <div className="chips">
+        {presets.map((v) => (
+          <button
+            key={v}
+            className={`chip ${!custom && value === v ? 'active' : ''}`}
+            onClick={() => {
+              setCustom(false);
+              onChange(v);
+            }}
+          >
+            {fmt(id, v)}
+          </button>
+        ))}
+        <button className={`chip ${custom ? 'active' : ''}`} onClick={() => setCustom(true)}>
+          {t('params.custom')}
+        </button>
       </div>
-      <p className="hint">{t(`params.${id}.hint` as StringKey)}</p>
-      {warn && <div className="warn-msg">⚠ {warn}</div>}
+      {custom && (
+        <div className="row2">
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={value}
+            onChange={(e) => onChange(clamp(parseFloat(e.target.value)))}
+          />
+          <input
+            type="number"
+            min={min}
+            max={max}
+            step={step}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+            }}
+          />
+          <span className="unit">
+            {min}–{max}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -85,7 +138,6 @@ export function ParamPanel({ params, onChange, remember, onRememberChange, machi
         max={PARAM_LIMITS.zOffset.max}
         step={PARAM_LIMITS.zOffset.step}
         value={params.zOffset}
-        warn={params.zOffset < Z_WARN_BELOW ? t('params.zOffset.warn') : null}
         onChange={set('zOffset')}
       />
       <ParamRow
@@ -106,15 +158,15 @@ export function ParamPanel({ params, onChange, remember, onRememberChange, machi
         value={params.travelSpeed}
         onChange={set('travelSpeed')}
       />
-      <div className="btn-row" style={{ marginBottom: 8 }}>
-        <button className="btn secondary" onClick={() => onChange({ ...DEFAULT_PARAMS })}>
+      <div className="param-foot">
+        <label className="checkbox-row">
+          <input type="checkbox" checked={remember} onChange={(e) => onRememberChange(e.target.checked)} />
+          {t('params.remember')}
+        </label>
+        <button className="linkbtn" onClick={() => onChange({ ...DEFAULT_PARAMS })}>
           {t('params.reset')}
         </button>
       </div>
-      <label className="checkbox-row">
-        <input type="checkbox" checked={remember} onChange={(e) => onRememberChange(e.target.checked)} />
-        {t('params.remember')}
-      </label>
     </div>
   );
 }

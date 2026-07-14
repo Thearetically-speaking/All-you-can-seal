@@ -1,11 +1,14 @@
 import { useCallback, useState } from 'react';
 import { Dropzone } from './Dropzone';
+import { GcodeViewer } from './GcodeViewer';
+import { Tip } from './Tip';
 import { useI18n } from '../i18n';
 import { openThreeMf } from '../engine/threemf';
 import { inspectGcode, FoundValue, GcodeInspection } from '../engine/inspect';
 
 interface PlateInspection {
   index: number;
+  text: string;
   inspection: GcodeInspection;
 }
 
@@ -18,6 +21,7 @@ export function ValidatorTab() {
   const { t } = useI18n();
   const [fileName, setFileName] = useState<string | null>(null);
   const [plates, setPlates] = useState<PlateInspection[]>([]);
+  const [viewPlate, setViewPlate] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +38,8 @@ export function ValidatorTab() {
         } else {
           texts = openThreeMf(bytes).plates.map((p) => ({ index: p.index, text: p.text }));
         }
-        setPlates(texts.map((p) => ({ index: p.index, inspection: inspectGcode(p.text) })));
+        setPlates(texts.map((p) => ({ index: p.index, text: p.text, inspection: inspectGcode(p.text) })));
+        setViewPlate(texts[0]?.index ?? 1);
         setFileName(file.name);
       } catch (e) {
         const err = e as Error;
@@ -74,6 +79,32 @@ export function ValidatorTab() {
       {plates.map((p) => (
         <PlatePanel key={p.index} plate={p} multiPlate={plates.length > 1} />
       ))}
+
+      {plates.length > 0 && (
+        <div className="panel">
+          <h2>
+            {t('viewer.title')}
+            <Tip text={t('viewer.tip')} />
+          </h2>
+          {plates.length > 1 && (
+            <div className="chips" style={{ marginBottom: 8 }}>
+              {plates.map((p) => (
+                <button
+                  key={p.index}
+                  className={`chip ${viewPlate === p.index ? 'active' : ''}`}
+                  onClick={() => setViewPlate(p.index)}
+                >
+                  {t('plates.plate')} {p.index}
+                </button>
+              ))}
+            </div>
+          )}
+          <GcodeViewer
+            key={viewPlate}
+            text={(plates.find((p) => p.index === viewPlate) ?? plates[0]).text}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -267,7 +267,8 @@ export function Preview3D({ toolpath, bed, dark }: Props) {
     if (r.travelLine) {
       (r.travelLine.material as THREE.LineBasicMaterial).opacity = colorMode === 'type' ? 0.35 : 0.8;
     }
-  }, [colorMode, toolpath]);
+    // `dark` rebuilds the geometry above, so the color attribute must be reattached here too.
+  }, [colorMode, toolpath, dark]);
 
   // --- draw range from step + layer filter ------------------------------------
   useEffect(() => {
