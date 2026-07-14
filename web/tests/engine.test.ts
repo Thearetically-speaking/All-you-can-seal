@@ -74,7 +74,7 @@ describe('rewriteGcode', () => {
     expect(out).toContain('; nozzle_temperature = 260');
     expect(out).toContain('; nozzle_temperature_initial_layer = 260');
     expect(out).toContain('; filament_flow_ratio = 1.2');
-    expect(out).toContain('G29.1 Z-0.15 ; for Textured PEI Plate');
+    expect(out).toContain('G29.1 Z-0.17 ; for Textured PEI Plate');
     expect(out).toContain(';VT0 H-1\nM221 S120\n');
     // fixed process temps untouched
     expect(out).toContain('M109 S250 ;set nozzle to common flush temp');
@@ -155,7 +155,7 @@ describe('inspectGcode (validator tab)', () => {
     const insp = inspectGcode(sealed);
     expect(insp.info.processedMarker).not.toBeNull();
     expect(insp.nozzleTemps).toEqual([{ value: 260, count: 4, example: 'M109 S260' }]);
-    expect(insp.zOffset?.value).toBe(-0.15);
+    expect(insp.zOffset?.value).toBe(-0.17);
     expect(insp.flowPercent).toEqual({ value: 120, count: 1, example: 'M221 S120' });
     expect(insp.configFlowRatio).toBe(1.2);
     expect(insp.travelSpeeds).toEqual([{ value: 5, count: 2, example: 'G1 F300' }]);

@@ -266,7 +266,7 @@ const Ctx = createContext<I18n>(null!);
 export function detectLang(): Lang {
   const stored = localStorage.getItem('aycs-lang');
   if (stored === 'en' || stored === 'zh') return stored;
-  return navigator.language.toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  return 'en';
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {

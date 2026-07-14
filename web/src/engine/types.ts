@@ -14,7 +14,7 @@ export interface SealParams {
 
 export const DEFAULT_PARAMS: SealParams = {
   nozzleTemp: 260,
-  zOffset: -0.15,
+  zOffset: -0.17,
   flowRate: 120,
   travelSpeed: 5,
 };
