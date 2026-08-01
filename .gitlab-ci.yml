@@ -9,7 +9,6 @@ pages:
     paths:
       - node_modules/
   script:
-    - cd web
     - npm install
     - npm run build
     - cp -a dist/. public/
