@@ -184,16 +184,4 @@ If you use this for soft-robotics or wearable research, I'd like to hear about i
 MIT.
  
 You are free to share and adapt the material for non-commercial purposes, with attribution. Commercial use requires explicit permission.
-## Citation
- 
-```bibtex
-@inproceedings{lu2026sealing,
-  title     = {Heat-Sealing Soft Pneumatic Units for Wearables on a Consumer
-               3D Printer: A Non-Destructive G-code Method for Accessible Fabrication},
-  author    = {Lu, Jiaxi and Hartman, Kate and Puckett, Nick},
-  booktitle = {Adjunct Proceedings of the 2026 ACM International Joint Conference
-               on Pervasive and Ubiquitous Computing},
-  year      = {2026}
-}
-```
- 
+
