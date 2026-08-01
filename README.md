@@ -6,7 +6,8 @@ This project rewrites the G-code inside Bambu Studio's `.gcode` and `.gcode.3mf`
 
 It comes in two forms:
 
-- **🌐 Web app (recommended)** — zero install, drag & drop, 3D path preview, safety checks. Lives in [`web/`](web/) and deploys to GitHub Pages. Your file never leaves the browser.
+- **🌐 Web app (recommended)** — https://thearetically-speaking.github.io/All-you-can-seal/
+- zero install, drag & drop, 3D path preview, safety checks. Lives in [`web/`](web/) and deploys to GitHub Pages. Your file never leaves the browser.
 - **🐍 Python CLI** — the original `allyoucanseal-bambu.py` script, kept as a command-line alternative.
 
 ## Web app
