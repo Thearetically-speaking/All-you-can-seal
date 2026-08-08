@@ -74,7 +74,28 @@ def replace_config_value(lines: list[str], key: str, new_value: str) -> tuple[in
     return count, old_value, new_value
 
 
-def apply_nozzle_temp_in_startup(lines: list[str]) -> tuple[int, str | None]:
+def detect_source_print_temp(lines: list[str]) -> float:
+    """Detect the slicer's print temperature from the config header.
+
+    The header stores it as a comma-separated per-filament list, e.g.
+    ``; nozzle_temperature_initial_layer = 240,220,220,220``. The first value
+    is the active extruder's temperature. Falls back to SOURCE_PRINT_TEMP when
+    the header is missing so behaviour matches the original hardcoded default.
+    """
+    for key in ("nozzle_temperature_initial_layer", "nozzle_temperature"):
+        pattern = re.compile(
+            rf"^\s*;\s*{re.escape(key)}\s*=\s*(-?\d+(?:\.\d+)?)"
+        )
+        for line in lines:
+            match = pattern.match(line)
+            if match:
+                return float(match.group(1))
+    return SOURCE_PRINT_TEMP
+
+
+def apply_nozzle_temp_in_startup(
+    lines: list[str], source_temp: float = SOURCE_PRINT_TEMP
+) -> tuple[int, str | None]:
     pattern = re.compile(r"^(\s*M10[49]\s+S)(-?\d+(?:\.\d+)?)([^\r\n]*)(\r?\n?)$")
     replacement_value = fmt_temp(NOZZLE_TEMP)
     count = 0
@@ -90,7 +111,7 @@ def apply_nozzle_temp_in_startup(lines: list[str]) -> tuple[int, str | None]:
 
         if value in EXCLUDED_TEMPS:
             continue
-        if value != SOURCE_PRINT_TEMP:
+        if value != source_temp:
             continue
         if value_str == replacement_value:
             continue
@@ -208,10 +229,14 @@ def modify_gcode_text(content: str) -> tuple[str, dict[str, object], list[str]]:
     if machine_end is None:
         warnings.append("未找到 MACHINE_END_GCODE_START，跳过打印主体移动速度修改。")
 
+    source_print_temp = SOURCE_PRINT_TEMP
+    if config_end is not None:
+        source_print_temp = detect_source_print_temp(lines[: config_end + 1])
+
     if config_end is not None and machine_start is not None:
         startup = lines[config_end + 1 : machine_start + 1]
 
-        temp_count, temp_old = apply_nozzle_temp_in_startup(startup)
+        temp_count, temp_old = apply_nozzle_temp_in_startup(startup, source_print_temp)
         z_count, z_old = apply_z_offset_in_startup(startup)
 
         lines[config_end + 1 : machine_start + 1] = startup
